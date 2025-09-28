@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>noid — login</title>
+  <style>
+    :root{
+      color-scheme: dark;
+
+      /* 50% bigger brand row */
+      --brand-size: 33px;   /* (was 22px) */
+
+      /* surfaces */
+      --bg:#000000; --panel:#0b0c0f; --border:#2a2a2a; --text:#f2f3f5; --muted:#121216;
+
+      /* brand scarlet */
+      --scarlet:#ff2a3f; --scarlet-600:#d31533;
+
+      /* copy */
+      --sub:#b5b9c3;
+
+      /* background vibe */
+      --spot-1: rgba(255,42,63,.14);
+      --spot-2: rgba(255,42,63,.08);
+      --grid-opacity:.06;
+
+      /* validation colors */
+      --ok:#18c174;      /* green for valid */
+      --ok-bg:#0f2f22;
+      --bad:#ff6262;     /* red for invalid */
+      --bad-bg:#2b1212;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background:var(--bg); color:var(--text);
+      font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;
+      display:grid; place-items:center; padding:16px; overflow:hidden;
+    }
+
+    /* subtle background */
+    .backdrop{
+      position:fixed; inset:0; pointer-events:none; z-index:0;
+      background:
+        radial-gradient(700px 480px at 14% 10%, var(--spot-1), transparent 60%),
+        radial-gradient(820px 560px at 86% 88%, var(--spot-2), transparent 65%),
+        linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(0,0,0,.35) 100%);
+    }
+    .backdrop::after{
+      content:""; position:absolute; inset:0; opacity:var(--grid-opacity);
+      background-image:
+        linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px);
+      background-size: 40px 40px;
+      mix-blend-mode:soft-light;
+    }
+
+    /* card */
+    .card{
+      position:relative; z-index:1;
+      width:100%; max-width:640px; background:var(--panel); border:1px solid var(--border);
+      border-radius:16px; padding:24px 22px; box-shadow:0 18px 54px rgba(0,0,0,.35);
+    }
+
+    /* brand row: inline SVG + wordmark + badge */
+    .brand{ display:flex; align-items:center; gap:10px; }
+    .logo-svg{ height:var(--brand-size); width:auto; display:block; color:var(--scarlet); }
+    .wordmark{ font-weight:800; font-size:var(--brand-size); line-height:1; letter-spacing:.2px; color:var(--text); }
+    .badge{font-size:11px; color:#9aa3b3; background:#182032; padding:2px 8px; border-radius:999px}
+    .desc{color:#9aa3b3; font-size:13px; margin-top:10px}
+
+    label{display:block; font-size:13px; margin:16px 4px 8px; color:#cfd3de}
+    .row{display:flex; gap:12px; align-items:center}
+    .check{display:flex; align-items:center; gap:8px; color:#cfd3de; font-size:13px}
+
+    /* inputs */
+    .input{
+      width:100%; padding:12px 14px; border-radius:12px; outline:none;
+      border:1px solid var(--border); background:#0b0e14; color:var(--text);
+      transition:border-color .15s, box-shadow .15s, background .15s;
+    }
+    .input:focus{border-color:#3b4154}
+
+    /* validity colors */
+    .input.ok{
+      border-color: var(--ok);
+      box-shadow: 0 0 0 4px rgba(24,193,116,.18);
+      background: linear-gradient(180deg, #0e1414, var(--ok-bg));
+    }
+    .input.bad{
+      border-color: var(--bad);
+      box-shadow: 0 0 0 3px rgba(255,98,98,.16);
+      background: linear-gradient(180deg, #121010, var(--bad-bg));
+    }
+    .hint{font-size:12px; min-height:16px; margin-top:6px}
+    .hint.ok{color:var(--ok)}
+    .hint.bad{color:var(--bad)}
+
+    /* button */
+    .btn{
+      width:100%; margin-top:18px; padding:12px 16px; border-radius:14px; cursor:not-allowed;
+      background:#2a2f41; color:#8e95a5; border:1px solid var(--border);
+      transition:filter .15s ease, transform .02s ease;
+    }
+    .btn.enabled{
+      cursor:pointer; background:linear-gradient(180deg, var(--scarlet) 0%, var(--scarlet-600) 100%);
+      color:#fff; border-color:transparent
+    }
+    .btn.enabled:active{ transform:translateY(1px) }
+
+    .foot{margin-top:14px; color:#9aa3b3; font-size:12px; text-align:center}
+  </style>
+</head>
+<body>
+  <div class="backdrop"></div>
+
+  <main class="card" role="main" aria-labelledby="heading">
+    <!-- Brand row with logo left of "noid" -->
+    <div class="brand">
+      <!-- inline SVG logo (inherits scarlet via currentColor) -->
+      <svg class="logo-svg" viewBox="0 0 325 260" role="img" aria-label="noid logo">
+        <g transform="translate(0,260) scale(0.1,-0.1)" fill="currentColor" stroke="none">
+          <path d="M0 1300 l0 -1300 1625 0 1625 0 0 1300 0 1300 -1625 0 -1625 0 0
+          -1300z m1479 759 c23 -72 101 -127 164 -115 42 8 102 68 120 121 17 48 29 48
+          102 -1 51 -33 109 -91 280 -279 106 -117 156 -146 207 -121 l31 16 -7 -46
+          c-16 -120 -113 -231 -233 -268 -16 -5 -23 -2 -28 14 -4 12 -20 37 -37 56 l-30
+          34 28 0 29 0 -25 20 c-46 35 -131 71 -229 97 -137 36 -325 36 -461 0 -98 -26
+          -186 -63 -230 -97 l-25 -20 27 0 26 0 -29 -31 c-16 -17 -29 -36 -29 -43 0 -6
+          -4 -17 -9 -25 -13 -21 -110 28 -166 84 -53 52 -82 111 -91 182 -6 40 -4 46 7
+          36 7 -7 29 -13 49 -13 49 0 97 36 195 146 128 143 247 257 295 281 25 12 48
+          19 51 15 4 -4 12 -23 18 -43z m111 -518 c0 -8 -85 -139 -113 -173 -11 -14 -24
+          -16 -72 -11 l-58 6 5 -55 4 -55 -43 -27 c-54 -32 -67 -33 -81 -1 -15 33 -15
+          35 3 35 19 0 41 36 49 83 7 39 34 59 66 50 10 -3 8 1 -4 11 -11 9 -28 16 -38
+          16 -18 0 -35 41 -24 59 19 30 306 89 306 62z m155 -1 c98 -15 145 -30 146 -49
+          0 -10 2 -12 6 -3 6 16 25 15 47 -1 27 -20 12 -63 -25 -71 -37 -7 -38 -24 -2
+          -28 22 -2 29 -10 36 -38 17 -68 29 -90 48 -90 23 0 23 -3 3 -43 -24 -46 -62
+          -93 -89 -111 -23 -15 -26 -14 -49 9 -14 14 -30 25 -36 25 -6 0 -8 5 -4 11 11
+          18 -38 0 -64 -24 -12 -11 -27 -38 -32 -59 -10 -34 -30 -53 -30 -28 0 14 -27
+          12 -33 -2 -3 -10 -9 -10 -26 0 -18 10 -26 10 -37 1 -11 -9 -18 -8 -30 2 -13
+          10 -17 10 -24 0 -11 -19 -30 -4 -30 24 0 32 -36 71 -85 91 -36 15 -38 15 -26
+          0 10 -11 10 -16 2 -16 -7 0 -23 -11 -37 -25 l-25 -25 -30 20 c-16 12 -29 25
+          -29 29 0 4 26 25 58 48 43 31 65 40 84 36 37 -7 90 13 119 43 23 25 23 26 5
+          39 -10 8 -23 16 -29 18 -5 1 9 27 32 57 23 30 54 81 68 113 15 31 32 57 38 57
+          5 0 41 -5 80 -10z m-755 -462 c5 -13 18 -56 30 -97 29 -102 60 -129 135 -121
+          27 2 65 28 65 43 0 7 -36 31 -81 52 -45 22 -85 48 -90 57 -12 22 -11 58 1 58
+          6 0 10 -4 10 -9 0 -9 167 -81 189 -81 7 0 22 11 33 25 23 30 88 51 100 32 4
+          -7 2 -13 -7 -15 -22 -5 -18 -32 5 -32 28 0 26 -36 -2 -44 -13 -3 -34 -24 -48
+          -46 -55 -89 -156 -123 -244 -80 -54 25 -81 66 -96 141 -15 74 -27 99 -46 99
+          -12 0 -15 -6 -11 -22 7 -25 -8 -58 -27 -58 -7 0 -18 12 -24 26 -11 22 -9 30
+          14 60 32 42 79 48 94 12z m1349 -7 c22 -31 28 -71 10 -71 -5 0 -7 -4 -4 -10 3
+          -5 -1 -10 -9 -10 -20 0 -36 31 -30 57 3 12 2 23 -3 26 -20 13 -36 -14 -49 -83
+          -18 -95 -49 -143 -108 -165 -91 -35 -169 -6 -241 88 -20 26 -42 47 -50 47 -8
+          0 -15 9 -15 20 0 13 7 20 20 20 23 0 27 27 5 32 -9 2 -11 8 -7 15 12 19 77 -2
+          100 -32 11 -14 27 -25 35 -25 20 0 158 59 177 76 25 22 40 4 26 -31 -10 -23
+          -32 -39 -95 -70 -44 -21 -81 -45 -81 -51 0 -16 39 -44 62 -44 10 0 18 -6 19
+          -12 0 -10 2 -10 6 0 2 6 13 12 24 12 34 0 67 44 89 121 33 114 36 119 69 119
+          21 0 35 -8 50 -29z m-899 -166 c17 -9 30 -20 30 -26 0 -6 5 -7 11 -4 5 4 39
+          -6 75 -21 l65 -27 107 46 c59 26 113 47 119 47 27 0 31 -69 6 -98 -15 -17
+          -241 -120 -462 -210 -35 -15 -82 -43 -104 -64 -62 -58 -178 -74 -260 -37 -29
+          13 -36 29 -13 29 8 0 38 18 67 40 37 28 61 40 77 37 15 -3 26 2 33 15 7 13 19
+          18 34 16 13 -2 30 4 37 13 7 8 58 35 113 59 55 23 101 44 103 45 2 2 -18 14
+          -45 27 -52 27 -70 57 -59 102 7 30 24 33 66 11z m452 -197 c40 -17 79 -38 86
+          -47 7 -9 24 -15 37 -13 15 2 27 -3 34 -16 7 -13 18 -18 34 -15 16 3 36 -6 66
+          -31 24 -20 54 -39 67 -42 36 -9 29 -20 -23 -38 -89 -30 -182 -13 -244 45 -23
+          21 -85 55 -165 89 l-128 54 50 22 c67 31 102 29 186 -8z"/>
+          <path d="M1801 1330 c-29 -16 -60 -35 -67 -41 -8 -6 -27 -9 -43 -7 -26 4 -29
+          2 -20 -14 5 -10 17 -18 25 -18 9 0 27 -9 41 -20 32 -25 113 -28 113 -5 0 8 4
+          15 10 15 16 0 40 58 38 90 -3 39 -26 39 -97 0z"/>
+          <path d="M1588 1196 c-18 -37 -19 -47 -8 -61 10 -12 16 -13 26 -4 11 9 17 9
+          28 0 10 -9 16 -8 26 4 11 14 10 24 -8 61 -12 24 -26 44 -32 44 -6 0 -20 -20
+          -32 -44z"/>
+        </g>
+      </svg>
+      <span class="wordmark" id="heading">noid</span>
+      <span class="badge">prototype</span>
+    </div>
+
+    <p class="desc">Pick a username and password to enter the chat. Stored locally only.</p>
+
+    <form id="form" novalidate>
+      <label for="username">Username</label>
+      <input id="username" class="input" name="username" type="text" minlength="3" maxlength="20"
+             placeholder="e.g., alan" autocomplete="username" required />
+      <div id="userHint" class="hint"></div>
+
+      <label for="password">Password</label>
+      <input id="password" class="input" name="password" type="password" minlength="8"
+             placeholder="Minimum 8 chars, include a number" autocomplete="current-password" required />
+      <div id="passHint" class="hint"></div>
+
+      <div class="row" style="margin-top:10px">
+        <label class="check" for="remember">
+          <input id="remember" name="remember" type="checkbox" checked />
+          Remember me
+        </label>
+      </div>
+
+      <button id="enter" type="submit" class="btn" disabled>Enter Chat</button>
+    </form>
+
+    <div class="foot">By continuing you agree to local storage for preferences.</div>
+  </main>
+
+  <script>
+    const $ = (q, r=document) => r.querySelector(q);
+
+    // Prefill if previously saved
+    (function hydrate(){
+      try{
+        const raw = localStorage.getItem("noid.user");
+        if(!raw) return;
+        const u = JSON.parse(raw);
+        if (u?.name) $("#username").value = u.name;
+        $("#remember").checked = true;
+      }catch{}
+    })();
+
+    const username = $("#username");
+    const password = $("#password");
+    const userHint = $("#userHint");
+    const passHint = $("#passHint");
+    const enterBtn = $("#enter");
+
+    // Valid username: 3–20 chars, letters/numbers/space/_ . -
+    function validateUser(v){
+      if (v.length < 3) return {ok:false, msg:"Username must be at least 3 characters."};
+      if (v.length > 20) return {ok:false, msg:"Username must be at most 20 characters."};
+      if (!/^[a-z0-9_ .\-]+$/i.test(v)) return {ok:false, msg:"Use only letters, numbers, spaces, _ . -"};
+      return {ok:true, msg:"Looks good ✔"};
+    }
+
+    // Password: at least 8, include a letter and a number
+    function validatePass(v){
+      if (v.length < 8) return {ok:false, msg:"Password must be at least 8 characters."};
+      if (!/[A-Za-z]/.test(v) || !/[0-9]/.test(v)) return {ok:false, msg:"Include at least one letter and one number."};
+      return {ok:true, msg:"Strong enough ✔"};
+    }
+
+    function paint(el, hint, result){
+      el.classList.remove("ok","bad");
+      hint.classList.remove("ok","bad");
+
+      if (result.ok){
+        el.classList.add("ok");
+        hint.classList.add("ok");
+      } else if (el.value.trim().length){
+        el.classList.add("bad");
+        hint.classList.add("bad");
+      }
+
+      hint.textContent = result.msg || "";
+    }
+
+    function reevaluate(){
+      const u = validateUser(username.value.trim());
+      const p = validatePass(password.value);
+
+      paint(username, userHint, u);
+      paint(password, passHint, p);
+
+      if (u.ok && p.ok){
+        enterBtn.disabled = false;
+        enterBtn.classList.add("enabled");
+      } else {
+        enterBtn.disabled = true;
+        enterBtn.classList.remove("enabled");
+      }
+    }
+
+    username.addEventListener("input", reevaluate);
+    password.addEventListener("input", reevaluate);
+
+    $("#form").addEventListener("submit", (e)=>{
+      e.preventDefault();
+      reevaluate();
+      if (enterBtn.disabled) return;
+
+      const name = username.value.trim();
+      const remember = $("#remember").checked;
+
+      const user = { name, savedAt: Date.now() };
+      try{
+        if (remember) localStorage.setItem("noid.user", JSON.stringify(user));
+        else localStorage.removeItem("noid.user");
+      }catch{}
+
+      // go to chat
+      window.location.href = "chat.html";
+    });
+
+    // initialize
+    reevaluate();
+  </script>
+</body>
+</html>

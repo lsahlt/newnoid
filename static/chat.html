@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>noid — chat</title>
+  <style>
+    :root{
+      color-scheme: dark;
+
+      /* surfaces */
+      --bg:#000000;
+      --panel:#0b0c0f;
+      --border:#262a31;
+      --muted:#121216;
+
+  /* text */
+  --text:#e9ecf1;
+  --sub:#7a8ebb;
+
+  /* brand scarlet (sender) */
+  --scarlet:#ff2a3f;
+  --scarlet-600:#d31533;
+  --scarlet-700:#a81827;
+
+  /* brand blue (receiver) */
+  --blue:#2a7aff;
+  --blue-600:#155ad3;
+  --blue-700:#1847a8;
+
+      /* background vibe (subtle) */
+      --spot-1: rgba(255, 42, 63, .12);
+      --spot-2: rgba(255, 42, 63, .08);
+      --grid-opacity:.06;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background:var(--bg); color:var(--text);
+      font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;
+      overflow:hidden;
+    }
+
+    /* background */
+    .backdrop{
+      position:fixed; inset:0; pointer-events:none; z-index:0;
+      background:
+        radial-gradient(600px 400px at 8% 18%, var(--spot-1), transparent 60%),
+        radial-gradient(700px 520px at 85% 88%, var(--spot-2), transparent 65%),
+        linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(0,0,0,.35) 100%);
+    }
+    .backdrop::after{
+      content:""; position:absolute; inset:0; opacity:var(--grid-opacity);
+      background-image:
+        linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px);
+      background-size: 40px 40px;
+      mix-blend-mode:soft-light;
+    }
+
+    /* layout */
+    .wrap{ position:relative; z-index:1; height:100%; display:grid; grid-template-rows:auto 1fr auto; }
+
+    header{
+      height:64px;                                  /* a bit taller for bigger logo */
+      display:flex; align-items:center; gap:14px;
+      padding:10px 16px; background:
+        linear-gradient(to bottom, rgba(0,0,0,.55), rgba(0,0,0,.2));
+      border-bottom:1px solid rgba(255,255,255,.05);
+      backdrop-filter: blur(6px);
+    }
+
+    /* brand (inline SVG + wordmark) */
+    .brand{ display:flex; align-items:center; gap:12px; font-weight:800; font-size:18px; }
+    .brand{ color: var(--scarlet); }                /* SVG inherits this color */
+    .logo-svg{ height:40px; width:auto; display:block; }  /* doubled from 20px */
+    .wordmark{ letter-spacing:.2px; color: var(--text); }
+
+    .room{
+      font-size:12px; padding:4px 8px; border-radius:999px;
+      background:#1a1f2b; color:#aab3c5;
+    }
+    .spacer{ flex:1 1 auto; }
+    .user{ color:#d5d9e6; font-weight:600; }
+    .btn-outline{
+      margin-left:8px; padding:8px 12px; border-radius:10px;
+      background:transparent; color:#dbe0ea; border:1px solid var(--border);
+      cursor:pointer;
+    }
+    .btn-outline:hover{ border-color:#3a4252 }
+
+    main{ padding:16px; overflow:auto; }
+    .stack{ display:flex; flex-direction:column; gap:12px; max-width:900px; }
+
+    /* message bubbles */
+    .msg{
+  display:inline-block;
+  max-width:70vw;
+  padding:8px 12px;
+  border-radius:12px;
+  line-height:1.35;
+  word-break:break-word;
+  margin-bottom:2px;
+    }
+    .me {
+  margin-left:auto;
+  color:#fff;
+  background:linear-gradient(180deg, var(--scarlet) 0%, var(--scarlet-600) 100%);
+  box-shadow:0 6px 20px rgba(255,42,63,.18);
+  display:inline-block;
+  max-width:70vw;
+    }
+    .them {
+  color:#fff;
+  background:linear-gradient(180deg, var(--blue) 0%, var(--blue-600) 100%);
+  box-shadow:0 6px 20px rgba(42,122,255,.18);
+  border:none;
+  display:inline-block;
+  max-width:70vw;
+    }
+
+    /* composer */
+    footer{
+      padding:12px 16px; border-top:1px solid rgba(255,255,255,.05);
+      background:linear-gradient(to top, rgba(0,0,0,.45), rgba(0,0,0,.15));
+      backdrop-filter: blur(6px);
+    }
+
+    /* attachment chips row */
+    .chips{
+      max-width:900px; margin:0 auto 8px; display:flex; flex-wrap:wrap; gap:6px;
+    }
+    .chip{
+      display:flex; align-items:center; gap:6px;
+      background:#10141a; color:#d6dbe6; border:1px dashed #394150;
+      border-radius:999px; padding:4px 8px; font-size:12px;
+    }
+    .chip .x{
+      width:16px; height:16px; border-radius:50%; display:grid; place-items:center;
+      color:#aeb7c6; cursor:pointer;
+    }
+    .chip .x:hover{ background:#1b212b }
+
+    .composer{
+      display:flex; gap:10px; align-items:center; max-width:900px; margin:0 auto;
+      background:#0e1118; border:1px solid var(--border); border-radius:14px; padding:8px;
+    }
+
+    /* attachments: paperclip button */
+    .attach{
+      min-width:36px; height:36px; display:grid; place-items:center;
+      border:none; background:transparent; color:var(--scarlet); border-radius:10px;
+      cursor:pointer;
+    }
+    .attach:hover{ background:#151920 }
+    .attach svg{ width:18px; height:18px }
+
+    .composer input{
+      flex:1 1 auto; background:transparent; color:var(--text);
+      border:0; outline:none; font:inherit; padding:8px 10px;
+    }
+    .send{
+      padding:10px 14px; border-radius:12px; cursor:pointer;
+      background:var(--scarlet); border:0; color:#fff; font-weight:600;
+    }
+    .send:hover{ filter:brightness(1.05) }
+
+    @media (max-width:640px){
+      header{ height:60px }
+      .logo-svg{ height:34px }
+      .msg{ max-width:80% }
+    }
+  </style>
+</head>
+<body>
+  <div class="backdrop"></div>
+
+  <div class="wrap">
+    <header>
+      <!-- brand: inline SVG (scarlet) + wordmark -->
+      <div class="brand">
+        <svg class="logo-svg" viewBox="0 0 325 260" role="img" aria-label="noid logo">
+          <g transform="translate(0,260) scale(0.1,-0.1)" fill="currentColor" stroke="none">
+            <path d="M0 1300 l0 -1300 1625 0 1625 0 0 1300 0 1300 -1625 0 -1625 0 0
+            -1300z m1479 759 c23 -72 101 -127 164 -115 42 8 102 68 120 121 17 48 29 48
+            102 -1 51 -33 109 -91 280 -279 106 -117 156 -146 207 -121 l31 16 -7 -46
+            c-16 -120 -113 -231 -233 -268 -16 -5 -23 -2 -28 14 -4 12 -20 37 -37 56 l-30
+            34 28 0 29 0 -25 20 c-46 35 -131 71 -229 97 -137 36 -325 36 -461 0 -98 -26
+            -186 -63 -230 -97 l-25 -20 27 0 26 0 -29 -31 c-16 -17 -29 -36 -29 -43 0 -6
+            -4 -17 -9 -25 -13 -21 -110 28 -166 84 -53 52 -82 111 -91 182 -6 40 -4 46 7
+            36 7 -7 29 -13 49 -13 49 0 97 36 195 146 128 143 247 257 295 281 25 12 48
+            19 51 15 4 -4 12 -23 18 -43z m111 -518 c0 -8 -85 -139 -113 -173 -11 -14 -24
+            -16 -72 -11 l-58 6 5 -55 4 -55 -43 -27 c-54 -32 -67 -33 -81 -1 -15 33 -15
+            35 3 35 19 0 41 36 49 83 7 39 34 59 66 50 10 -3 8 1 -4 11 -11 9 -28 16 -38
+            16 -18 0 -35 41 -24 59 19 30 306 89 306 62z m155 -1 c98 -15 145 -30 146 -49
+            0 -10 2 -12 6 -3 6 16 25 15 47 -1 27 -20 12 -63 -25 -71 -37 -7 -38 -24 -2
+            -28 22 -2 29 -10 36 -38 17 -68 29 -90 48 -90 23 0 23 -3 3 -43 -24 -46 -62
+            -93 -89 -111 -23 -15 -26 -14 -49 9 -14 14 -30 25 -36 25 -6 0 -8 5 -4 11 11
+            18 -38 0 -64 -24 -12 -11 -27 -38 -32 -59 -10 -34 -30 -53 -30 -28 0 14 -27
+            12 -33 -2 -3 -10 -9 -10 -26 0 -18 10 -26 10 -37 1 -11 -9 -18 -8 -30 2 -13
+            10 -17 10 -24 0 -11 -19 -30 -4 -30 24 0 32 -36 71 -85 91 -36 15 -38 15 -26
+            0 10 -11 10 -16 2 -16 -7 0 -23 -11 -37 -25 l-25 -25 -30 20 c-16 12 -29 25
+            -29 29 0 4 26 25 58 48 43 31 65 40 84 36 37 -7 90 13 119 43 23 25 23 26 5
+            39 -10 8 -23 16 -29 18 -5 1 9 27 32 57 23 30 54 81 68 113 15 31 32 57 38 57
+            5 0 41 -5 80 -10z m-755 -462 c5 -13 18 -56 30 -97 29 -102 60 -129 135 -121
+            27 2 65 28 65 43 0 7 -36 31 -81 52 -45 22 -85 48 -90 57 -12 22 -11 58 1 58
+            6 0 10 -4 10 -9 0 -9 167 -81 189 -81 7 0 22 11 33 25 23 30 88 51 100 32 4
+            -7 2 -13 -7 -15 -22 -5 -18 -32 5 -32 28 0 26 -36 -2 -44 -13 -3 -34 -24 -48
+            -46 -55 -89 -156 -123 -244 -80 -54 25 -81 66 -96 141 -15 74 -27 99 -46 99
+            -12 0 -15 -6 -11 -22 7 -25 -8 -58 -27 -58 -7 0 -18 12 -24 26 -11 22 -9 30
+            14 60 32 42 79 48 94 12z m1349 -7 c22 -31 28 -71 10 -71 -5 0 -7 -4 -4 -10 3
+            -5 -1 -10 -9 -10 -20 0 -36 31 -30 57 3 12 2 23 -3 26 -20 13 -36 -14 -49 -83
+            -18 -95 -49 -143 -108 -165 -91 -35 -169 -6 -241 88 -20 26 -42 47 -50 47 -8
+            0 -15 9 -15 20 0 13 7 20 20 20 23 0 27 27 5 32 -9 2 -11 8 -7 15 12 19 77 -2
+            100 -32 11 -14 27 -25 35 -25 20 0 158 59 177 76 25 22 40 4 26 -31 -10 -23
+            -32 -39 -95 -70 -44 -21 -81 -45 -81 -51 0 -16 39 -44 62 -44 10 0 18 -6 19
+            -12 0 -10 2 -10 6 0 2 6 13 12 24 12 34 0 67 44 89 121 33 114 36 119 69 119
+            21 0 35 -8 50 -29z m-899 -166 c17 -9 30 -20 30 -26 0 -6 5 -7 11 -4 5 4 39
+            -6 75 -21 l65 -27 107 46 c59 26 113 47 119 47 27 0 31 -69 6 -98 -15 -17
+            -241 -120 -462 -210 -35 -15 -82 -43 -104 -64 -62 -58 -178 -74 -260 -37 -29
+            13 -36 29 -13 29 8 0 38 18 67 40 37 28 61 40 77 37 15 -3 26 2 33 15 7 13 19
+            18 34 16 13 -2 30 4 37 13 7 8 58 35 113 59 55 23 101 44 103 45 2 2 -18 14
+            -45 27 -52 27 -70 57 -59 102 7 30 24 33 66 11z m452 -197 c40 -17 79 -38 86
+            -47 7 -9 24 -15 37 -13 15 2 27 -3 34 -16 7 -13 18 -18 34 -15 16 3 36 -6 66
+            -31 24 -20 54 -39 67 -42 36 -9 29 -20 -23 -38 -89 -30 -182 -13 -244 45 -23
+            21 -85 55 -165 89 l-128 54 50 22 c67 31 102 29 186 -8z"/>
+            <path d="M1801 1330 c-29 -16 -60 -35 -67 -41 -8 -6 -27 -9 -43 -7 -26 4 -29
+            2 -20 -14 5 -10 17 -18 25 -18 9 0 27 -9 41 -20 32 -25 113 -28 113 -5 0 8 4
+            15 10 15 16 0 40 58 38 90 -3 39 -26 39 -97 0z"/>
+            <path d="M1588 1196 c-18 -37 -19 -47 -8 -61 10 -12 16 -13 26 -4 11 9 17 9
+            28 0 10 -9 16 -8 26 4 11 14 10 24 -8 61 -12 24 -26 44 -32 44 -6 0 -20 -20
+            -32 -44z"/>
+          </g>
+        </svg>
+        <span class="wordmark">noid</span>
+      </div>
+
+      <span class="room">direct</span>
+      <div class="spacer"></div>
+
+      <div class="user" id="who"></div>
+      <button class="btn-outline" id="btnExit">Exit</button>
+    </header>
+
+    <main>
+      <div id="stack" class="stack"></div>
+    </main>
+
+    <footer>
+      <!-- attachment chips preview -->
+      <div id="chips" class="chips" aria-live="polite"></div>
+
+      <form id="composer" class="composer">
+        <!-- hidden input + visible paperclip -->
+        <input id="filePicker" type="file" multiple hidden />
+        <button type="button" class="attach" id="attachBtn" title="Attach files">
+          <!-- paperclip icon -->
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M16.5 6.5 9 14a3 3 0 1 0 4.24 4.24l8.13-8.13a5 5 0 0 0-7.07-7.07L5.4 11.84a7 7 0 1 0 9.9 9.9l6.2-6.2a1 1 0 1 0-1.41-1.41l-6.2 6.2a5 5 0 0 1-7.07-7.07l8.9-8.9a3 3 0 0 1 4.24 4.24L11 16.5a1 1 0 1 0 1.41 1.41l6.5-6.5a5 5 0 1 0-7.07-7.07l-9 9"/>
+          </svg>
+        </button>
+
+        <input id="text" type="text" placeholder="Message…" autocomplete="off" />
+        <select id="recipient" style="margin-left:8px">
+          <option value="">Everyone</option>
+        </select>
+        <button id="refreshRecipients" type="button" title="Refresh recipients" style="margin-left:6px">Refresh</button>
+        <span id="cryptoStatus" style="margin-left:8px; font-size:12px; opacity:.8"></span>
+        <button class="send" type="submit">Send</button>
+      </form>
+    </footer>
+  </div>
+
+  <script src="/static/kyber.js"></script>
+<script>
+// Development crypto debug toggle
+const DEV_CRYPTO_DEBUG = false; // set true to log SS/IV lengths
+// Track seen message IDs to avoid duplicate echo rendering
+window.noidSeenMids = new Set();
+function makeMid(){
+  try{
+    const r = Math.random().toString(36).slice(2,10);
+    const t = Date.now().toString(36).slice(-6);
+    return `${r}${t}`;
+  }catch{return `${Date.now()}`}
+}
+// Base64 helpers for byte arrays
+function bytesToBase64(arr){
+  try{
+    const bytes = arr instanceof Uint8Array ? arr : new Uint8Array(arr);
+    let bin = '';
+    for (let i=0;i<bytes.length;i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin);
+  }catch(e){ console.error('[Kyber] bytesToBase64 failed', e); return ''; }
+}
+function base64ToBytes(b64){
+  try{
+    const bin = atob(b64);
+    const out = new Uint8Array(bin.length);
+    for (let i=0;i<bin.length;i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }catch(e){ console.error('[Kyber] base64ToBytes failed', e); return new Uint8Array(); }
+}
+// On login, generate Kyber keypair if not present and send public key to backend
+// Always POST user's Kyber public key to backend on chat page load
+(function() {
+  let user = localStorage.getItem('noid.user') ? JSON.parse(localStorage.getItem('noid.user')) : {};
+  console.log('[Chat] Loaded noid.user:', {
+    name: user && user.name,
+    hasPub: !!(user && user.kyberPublicKey),
+    hasSec: !!(user && user.kyberSecretKey)
+  });
+  // If username is missing, try to recover from login
+  if (!user.name) {
+    window.location.href = '/';
+    return;
+  }
+  // If Kyber keys are missing (e.g., older login flow), generate now and persist
+  try {
+    if ((!user.kyberPublicKey || !user.kyberSecretKey) && window.kyber && window.kyber.KeyGen1024) {
+      const kp = window.kyber.KeyGen1024();
+      user.kyberPublicKey = kp[0];
+      user.kyberSecretKey = kp[1];
+      localStorage.setItem('noid.user', JSON.stringify(user));
+      console.log('[Chat] Generated missing Kyber keys and updated noid.user');
+    }
+  } catch (e) {
+    console.error('[Chat] Failed to generate/store Kyber keys:', e);
+  }
+  // Always POST public key to backend, retry if missing
+  function postPubkey() {
+  let user = localStorage.getItem('noid.user') ? JSON.parse(localStorage.getItem('noid.user')) : {};
+    if (!user.name || !user.kyberPublicKey) {
+      alert('Missing username or Kyber public key. Please log in again.');
+      console.error('[Kyber] Missing username or Kyber public key:', user);
+      return;
+    }
+    const pubkey_b64 = bytesToBase64(user.kyberPublicKey);
+    const uname = String(user.name||'').toLowerCase();
+    fetch('/pubkey', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ username: uname, pubkey: pubkey_b64 })
+    }).then(r => r.text()).then(resp => {
+      console.log('[Kyber] Sent Kyber-1024 public key for user:', uname, 'Response:', resp);
+    }).catch(err => {
+      console.error('[Kyber] Failed to POST Kyber public key:', err);
+    });
+  }
+  postPubkey();
+})();
+
+// Fetch all users' Kyber public keys from backend
+async function fetchAllPubKeys() {
+  const res = await fetch('/pubkeys');
+  const keys = await res.json();
+  // Merge into existing cache to avoid losing pubkeys learned via WS
+  window.noidPubKeys = Object.assign({}, window.noidPubKeys || {}, keys);
+}
+fetchAllPubKeys();
+
+function populateRecipients() {
+  try {
+    const sel = document.getElementById('recipient');
+    if (!sel) return;
+    const user = localStorage.getItem('noid.user') ? JSON.parse(localStorage.getItem('noid.user')) : {};
+    const me = user && user.name ? String(user.name).toLowerCase() : '';
+    const current = sel.value;
+    const online = (window.noidOnline || []).map(n => String(n).toLowerCase());
+    console.debug('[UI] populateRecipients: online=', online, 'me=', me);
+    // Build recipient set from pubkeys and presence
+    const keyNames = Object.keys(window.noidPubKeys || {}).map(n => String(n).toLowerCase());
+    console.debug('[UI] populateRecipients: pubkey users=', keyNames);
+    const allNamesSet = new Set([...keyNames, ...online]);
+    allNamesSet.delete(me);
+
+    // Clear and rebuild options
+    sel.innerHTML = '';
+    const optAll = document.createElement('option');
+    optAll.value = '';
+    optAll.textContent = 'Everyone';
+    sel.appendChild(optAll);
+    // Add recipients from union of pubkeys and online
+    const names = Array.from(allNamesSet).sort();
+    console.debug('[UI] populateRecipients: candidates=', names);
+    names.forEach(name => {
+      if (!name) return;
+      const hasKey = !!(window.noidPubKeys && window.noidPubKeys[name]);
+      const isOnline = online.includes(name);
+      const opt = document.createElement('option');
+      opt.value = name;
+      const pretty = name.charAt(0).toUpperCase() + name.slice(1);
+      const lock = hasKey ? ' \uD83D\uDD12' : '';
+      const dot = isOnline ? '•' : '';
+      opt.textContent = `${pretty} ${dot}${lock}`.trim();
+      sel.appendChild(opt);
+    });
+    // Restore previous selection if still present
+    const hasCurrent = Array.from(sel.options).some(o => o.value === current);
+    sel.value = hasCurrent ? current : '';
+    console.debug('[UI] populateRecipients: options=', Array.from(sel.options).map(o => ({value:o.value,label:o.textContent})));
+  } catch (e) { console.warn('[UI] populateRecipients failed:', e); }
+}
+
+// Initial populate after first fetch
+fetchAllPubKeys().then(populateRecipients).catch(()=>{});
+
+// Also refresh recipients list every 10s to discover new users (lightweight polling)
+setInterval(() => { fetchAllPubKeys().then(populateRecipients).catch(()=>{}); }, 10000);
+
+function updateCryptoStatus() {
+  try {
+    const sel = document.getElementById('recipient');
+    const status = document.getElementById('cryptoStatus');
+  const to = (sel.value||'').toLowerCase();
+    if (!to) {
+      status.textContent = 'Broadcast (no E2EE)';
+      status.style.color = '#9aa3b3';
+      return;
+    }
+  const hasKey = !!(window.noidPubKeys && to && window.noidPubKeys[to]);
+    if (hasKey) {
+      status.textContent = 'E2EE ready \uD83D\uDD12';
+      status.style.color = '#18c174';
+    } else {
+      status.textContent = 'Waiting for key… ask them to open chat';
+      status.style.color = '#ffb020';
+    }
+  } catch {}
+}
+
+function refreshRecipients() {
+  fetchAllPubKeys().then(() => { populateRecipients(); updateCryptoStatus(); }).catch(()=>{});
+}
+
+// Encrypt and send message using Kyber JS and AES-GCM
+async function sendEncryptedMessage(to, text, mid) {
+  const user = JSON.parse(localStorage.getItem('noid.user'));
+  // Always refresh pubkeys to avoid encrypting to a stale key
+  try { await fetchAllPubKeys(); } catch {}
+  let recipientKyberPublicKey = window.noidPubKeys[to];
+  if (!recipientKyberPublicKey) {
+    // Attempt to refresh pubkeys once before giving up
+    await fetchAllPubKeys();
+    populateRecipients();
+    recipientKyberPublicKey = window.noidPubKeys[to];
+    if (!recipientKyberPublicKey) {
+      appendMsg('system', 'Recipient Kyber public key not found. Ask them to open chat, then try again.');
+      return;
+    }
+  }
+  const recipientPkBytes = Array.isArray(recipientKyberPublicKey)
+    ? new Uint8Array(recipientKyberPublicKey)
+    : base64ToBytes(recipientKyberPublicKey);
+  const enc = kyber.Encrypt1024(recipientPkBytes);
+  const ciphertext = enc[0];
+  const sharedSecret = enc[1];
+  if (DEV_CRYPTO_DEBUG) console.debug('[Crypto] encrypt ss length:', sharedSecret?.length, '(expect 32 bytes)');
+  const key = await window.crypto.subtle.importKey('raw', sharedSecret, 'AES-GCM', false, ['encrypt']);
+  const nonce = window.crypto.getRandomValues(new Uint8Array(12));
+  if (DEV_CRYPTO_DEBUG) console.debug('[Crypto] encrypt IV length:', nonce?.length, '(expect 12 bytes)');
+  const encText = new TextEncoder().encode(text);
+  const aesCiphertext = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce }, key, encText);
+  // Encode fields as base64 strings for transport and backend storage
+  const payload = {
+    type: 'ciphertext',
+    from: user.name,
+    to,
+    mid: mid || makeMid(),
+    kyber_ct: bytesToBase64(ciphertext),
+    nonce: bytesToBase64(nonce),
+    ciphertext: bytesToBase64(new Uint8Array(aesCiphertext))
+  };
+  window.ws.send(JSON.stringify(payload));
+}
+
+// Decrypt incoming message using Kyber JS and AES-GCM
+async function decryptIncomingMessage(obj) {
+  const user = JSON.parse(localStorage.getItem('noid.user'));
+  // Decode base64 fields
+  const kyberCtBytes = base64ToBytes(obj.kyber_ct);
+  const sk = new Uint8Array(user.kyberSecretKey);
+  const sharedSecret = kyber.Decrypt1024(kyberCtBytes, sk);
+  if (DEV_CRYPTO_DEBUG) console.debug('[Crypto] decrypt ss length:', sharedSecret?.length, '(expect 32 bytes)');
+  const key = await window.crypto.subtle.importKey('raw', sharedSecret, 'AES-GCM', false, ['decrypt']);
+  const ciphertextAes = base64ToBytes(obj.ciphertext);
+  const iv = base64ToBytes(obj.nonce);
+  if (DEV_CRYPTO_DEBUG) console.debug('[Crypto] decrypt IV length:', iv?.length, '(expect 12 bytes)');
+  const plaintext = await window.crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertextAes);
+  return new TextDecoder().decode(plaintext);
+}
+</script>
+  <script>
+    // All WASM crypto loading logic removed. Kyber JS is used for all browser crypto.
+
+    window.ws = null;
+    // Store public keys for users
+    window.noidPubKeys = {};
+    function connectWs() {
+      const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+      window.ws = new WebSocket(`${proto}://${location.host}/ws`);
+
+      window.ws.onopen = () => {
+        // Send hello with token and username
+        const user = localStorage.getItem("noid.user") ? JSON.parse(localStorage.getItem("noid.user")) : {};
+        const token = user.token || '';
+        const username = user.name || '';
+        if (!token || !username) {
+          alert('Missing login info. Redirecting to login.');
+          window.location.href = '/';
+          return;
+        }
+        console.log('WebSocket open, sending hello:', { username, token });
+        window.ws.send(JSON.stringify({ type: 'hello', username, token }));
+      };
+
+      window.ws.onmessage = (ev) => {
+  // console.debug('[WS] Received message:', ev.data);
+        let shown = false;
+        try {
+          const obj = JSON.parse(ev.data);
+          if (obj.type === 'presence' && Array.isArray(obj.online)) {
+            window.noidOnline = obj.online;
+            populateRecipients();
+            updateCryptoStatus();
+            shown = true;
+          } else if (obj.type === 'pubkey' && obj.username && obj.pubkey) {
+            // Store pubkey as base64 string for consistency; normalize username
+            const uname = String(obj.username).toLowerCase();
+            window.noidPubKeys[uname] = obj.pubkey;
+            console.log(`[Crypto] Saved pubkey for ${uname}`);
+            // Do NOT immediately refetch from backend (may overwrite with stale cache)
+            populateRecipients();
+            updateCryptoStatus();
+            shown = true;
+          } else if (obj.type === 'ciphertext' && obj.from && obj.kyber_ct && obj.nonce && obj.ciphertext) {
+            // If this ciphertext is an echo of my own message, skip decrypt
+            try {
+              const u = JSON.parse(localStorage.getItem('noid.user')||'{}');
+              const me = (u && u.name ? String(u.name) : '').toLowerCase();
+              if (obj.from && String(obj.from).toLowerCase() === me) {
+                return;
+              }
+            } catch {}
+            // Deduplicate on echoed messages using message id (mid)
+            if (obj.mid) {
+              if (window.noidSeenMids.has(obj.mid)) {
+                // Already rendered locally
+                return;
+              }
+              window.noidSeenMids.add(obj.mid);
+            }
+            // Decrypt using Kyber JS and AES-GCM (expects base64 fields)
+            decryptIncomingMessage(obj).then(plaintext => {
+              appendMsg(obj.from, plaintext);
+            }).catch(e => {
+              console.error('[Crypto] decrypt failed', e);
+              appendMsg('system', 'Encrypted message received but could not be decrypted.');
+            });
+            shown = true;
+          } else if (obj.type === 'system') {
+            appendMsg('system', obj.msg);
+            shown = true;
+          } else if (obj.type === 'plaintext') {
+            appendMsg(obj.from, obj.data);
+            shown = true;
+          } else if (obj.from && obj.data) {
+            appendMsg(obj.from, obj.data);
+            shown = true;
+          } else {
+            appendMsg('other', JSON.stringify(obj));
+            shown = true;
+          }
+        } catch (e) {
+          appendMsg('system', ev.data);
+          shown = true;
+        }
+        if (!shown) appendMsg('system', '(no message)');
+      };
+      window.ws.onerror = (err) => {
+        console.error('WebSocket error:', err);
+      };
+      window.ws.onclose = () => {
+        console.warn('WebSocket closed.');
+      };
+    }
+
+    function appendMsg(user, text) {
+      const chat = document.getElementById('stack');
+      const div = document.createElement('div');
+      let myName = "You";
+      try {
+        const u = JSON.parse(localStorage.getItem("noid.user")||"null");
+        if (u && u.name) myName = u.name;
+      } catch {}
+      // If the sender is 'system', use a neutral bubble
+      if (user === 'system') {
+        div.className = 'msg them';
+      } else if (user === myName) {
+        div.className = 'msg me';
+      } else {
+        div.className = 'msg them';
+      }
+      div.innerText = `${user}: ${text}`;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+      console.log(`[UI] Appended message: ${user}: ${text}`);
+      // Ephemeral: auto-remove after 30s
+      setTimeout(() => {
+        if (div.parentElement) div.remove();
+      }, 30000);
+    }
+
+    // Connect WebSocket on page load
+    connectWs();
+    const $ = (q, r=document)=>r.querySelector(q);
+    const stack = $("#stack");
+    const input = $("#text");
+  const recipient = $("#recipient");
+
+    // Track recipient changes and update crypto status
+    // Track recipient changes
+    const refreshBtn = document.getElementById('refreshRecipients');
+    recipient.addEventListener("change", () => {
+      currentRecipient = recipient.value;
+      updateCryptoStatus();
+    });
+    refreshBtn.addEventListener('click', refreshRecipients);
+    // Initial state
+    currentRecipient = recipient.value;
+    updateCryptoStatus();
+
+    // show saved display name, if any
+    (function(){
+      try{
+        const u = JSON.parse(localStorage.getItem("noid.user")||"null");
+        $("#who").textContent = u && u.name ? u.name : "You";
+      }catch{}
+    })();
+
+    // Attachments state
+    const attachBtn = $("#attachBtn");
+    const filePicker = $("#filePicker");
+    const chips = $("#chips");
+    let attachments = []; // [{name,size,type,file}]
+
+    attachBtn.addEventListener("click", ()=> filePicker.click());
+
+    filePicker.addEventListener("change", ()=>{
+      if (!filePicker.files?.length) return;
+      for (const f of filePicker.files){
+        attachments.push({ name:f.name, size:f.size, type:f.type, file:f });
+      }
+      filePicker.value = ""; // allow same-file reselect
+      renderChips();
+    });
+
+    function renderChips(){
+      chips.innerHTML = "";
+      attachments.forEach((a, i)=>{
+        const el = document.createElement("div");
+        el.className = "chip";
+        el.innerHTML = `
+          <span>📎</span>
+          <span>${truncate(a.name, 26)}</span>
+          <span class="x" data-i="${i}" aria-label="Remove ${a.name}" role="button">✕</span>
+        `;
+        chips.appendChild(el);
+      });
+    }
+
+    chips.addEventListener("click", (e)=>{
+      const x = e.target.closest(".x");
+      if (!x) return;
+      const i = +x.dataset.i;
+      attachments.splice(i,1);
+      renderChips();
+    });
+
+    function truncate(s, n){ return s.length>n ? s.slice(0,n-1)+"…" : s; }
+
+  $("#composer").addEventListener("submit", (e)=>{
+
+      e.preventDefault();
+      const t = input.value.trim();
+      if (!t && attachments.length === 0) {
+        console.log('[UI] No text or attachments to send.');
+        return;
+      }
+
+  // We append immediately for snappy UX; echo will be de-duped via mid
+
+      // show attached files as a system bubble (demo UX)
+      if (attachments.length) {
+        const label = attachments.length === 1 ? "attachment" : "attachments";
+        const list = attachments.map(a => a.name).join(", ");
+        const sys = document.createElement("div");
+        sys.className = "msg them";
+        sys.textContent = `📎 ${attachments.length} ${label}: ${list}`;
+        stack.appendChild(sys);
+        console.log(`[UI] Appended attachment bubble: ${list}`);
+        attachments = [];
+        renderChips();
+      }
+
+      // Encrypt and send message via WebSocket using Kyber JS and AES-GCM (base64 wire format)
+      if (window.ws && t) {
+        const toRaw = recipient.value || '';
+        const to = toRaw ? toRaw.toLowerCase() : '';
+        if (!to) {
+          // Broadcast not supported for E2EE; send plaintext or show notice
+          appendMsg('system', 'Choose a recipient for E2EE direct message.');
+        } else {
+          // Show my message immediately (you'll also get an echo)
+          try {
+            const me = JSON.parse(localStorage.getItem('noid.user')||'{}')?.name || 'me';
+            const mid = makeMid();
+            window.noidSeenMids.add(mid);
+            appendMsg(me, t);
+            sendEncryptedMessage(to, t, mid);
+          } catch {}
+        }
+      } else if (!window.ws) {
+        console.error('[WS] WebSocket object missing!');
+      }
+
+      input.value = "";
+      stack.parentElement.scrollTop = stack.parentElement.scrollHeight;
+    });
+
+  $("#btnExit").addEventListener("click", ()=> {
+    localStorage.removeItem("noid.user");
+    window.location.href = "/";
+  });
+  </script>
+</body>
+</html>

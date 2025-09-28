@@ -1,0 +1,49 @@
+# Build output
+/target
+
+# Binaries (Windows/Linux)
+**/*.exe
+**/*.dll
+**/*.pdb
+**/*.so
+**/*.dylib
+**/*.a
+**/*.lib
+*.d
+
+# Logs
+*.log
+
+# Secrets and environment files
+.env
+.env.*
+*.pem
+*.key
+*.crt
+*.pfx
+*.p12
+*.der
+*.csr
+.ssh/
+.aws/
+
+# Editors/OS
+.vscode/
+.idea/
+.fleet/
+.DS_Store
+Thumbs.db
+
+# Node (if added later)
+node_modules/
+
+# Binaries & build
+/target
+**/*.exe
+**/*.dll
+**/*.pdb
+*.d
+*.log
+.DS_Store
+Thumbs.db
+.vscode/

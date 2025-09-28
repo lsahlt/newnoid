@@ -1,0 +1,29 @@
+
+[package]
+name = "noid-messenger"
+version = "0.1.0"
+edition = "2021"   # use 2021 instead of 2024 for max compatibility
+
+[dependencies]
+axum = { version = "0.6", features = ["ws"] }
+tokio = { version = "1", features = ["full"] }
+tower-http = { version = "0.3", features = ["fs", "trace", "compression-br", "set-header"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+futures = "0.3"
+anyhow = "1"
+once_cell = "1.19"
+base64 = "0.21"
+rusqlite = { version = "0.31", features = ["bundled"] }
+
+bcrypt = "0.13"
+uuid = { version = "1", features = ["v4"] }
+pqcrypto-kyber = "0.8"
+pqcrypto-traits = "0.3"
+aes-gcm = "0.10"
+rand = "0.8"
+
+reqwest = { version = "0.11", features = ["json", "multipart", "rustls-tls"] }
+
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt"] }
